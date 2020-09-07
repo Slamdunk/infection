@@ -557,16 +557,19 @@ final class Container
                 );
             },
             MutationTestingRunner::class => static function (self $container): MutationTestingRunner {
+                $configuration = $container->getConfiguration();
+
                 return new MutationTestingRunner(
                     $container->getMutantProcessFactory(),
                     $container->getMutantFactory(),
                     $container->getProcessRunner(),
                     $container->getEventDispatcher(),
-                    $container->getConfiguration()->isDryRun()
+                    $configuration->isDryRun()
                         ? new DummyFileSystem()
                         : $container->getFileSystem(),
-                    $container->getConfiguration()->noProgress(),
-                    $container->getConfiguration()->getProcessTimeout()
+                    $configuration->noProgress(),
+                    $configuration->getProcessTimeout(),
+                    $configuration->getIgnoreSourceCodeMutatorsMap()
                 );
             },
             LineRangeCalculator::class => static function (): LineRangeCalculator {

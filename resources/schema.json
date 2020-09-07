@@ -506,6 +506,12 @@
                             "items": {
                                 "type": "string"
                             }
+                        },
+                        "ignoreSourceCodeByRegex": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
                         }
                     }
                 }

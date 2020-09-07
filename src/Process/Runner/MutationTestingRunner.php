@@ -45,8 +45,10 @@ use Infection\Mutant\MutantExecutionResult;
 use Infection\Mutant\MutantFactory;
 use Infection\Mutation\Mutation;
 use Infection\Process\Factory\MutantProcessFactory;
+use function array_key_exists;
 use function Pipeline\take;
 use Symfony\Component\Filesystem\Filesystem;
+use function Safe\preg_match;
 
 /**
  * @internal
@@ -60,7 +62,12 @@ final class MutationTestingRunner
     private $fileSystem;
     private $runConcurrently;
     private $timeout;
+    /** @var array<string, array<int, string>> */
+    private $ignoreSourceCodeMutatorsMap;
 
+    /**
+     * @param array<string, array<int, string>> $ignoreSourceCodeMutatorsMap
+     */
     public function __construct(
         MutantProcessFactory $processFactory,
         MutantFactory $mutantFactory,
@@ -68,7 +75,8 @@ final class MutationTestingRunner
         EventDispatcher $eventDispatcher,
         Filesystem $fileSystem,
         bool $runConcurrently,
-        float $timeout
+        float $timeout,
+        array $ignoreSourceCodeMutatorsMap
     ) {
         $this->processFactory = $processFactory;
         $this->mutantFactory = $mutantFactory;
@@ -77,6 +85,7 @@ final class MutationTestingRunner
         $this->fileSystem = $fileSystem;
         $this->runConcurrently = $runConcurrently;
         $this->timeout = $timeout;
+        $this->ignoreSourceCodeMutatorsMap = $ignoreSourceCodeMutatorsMap;
     }
 
     /**
@@ -102,6 +111,22 @@ final class MutationTestingRunner
                 ));
 
                 return false;
+            })
+            ->filter(function (Mutant $mutant) {
+                $mutatorName = $mutant->getMutation()->getMutatorName();
+
+                if (!array_key_exists($mutatorName, $this->ignoreSourceCodeMutatorsMap)) {
+                    return true;
+                }
+
+
+                foreach ($this->ignoreSourceCodeMutatorsMap[$mutatorName] as $sourceCodeRegex) {
+                    if (preg_match("/-(.*?){$sourceCodeRegex}/", $mutant->getDiff()) === 1) {
+                        return false;
+                    }
+                }
+
+                return true;
             })
             ->filter(function (Mutant $mutant) {
                 if ($mutant->getMutation()->getNominalTestExecutionTime() < $this->timeout) {
